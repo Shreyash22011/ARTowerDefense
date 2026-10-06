@@ -45,7 +45,7 @@ public class ARGameBoardPlacement : MonoBehaviour
                 Quaternion.identity
             );
 
-            // Hide and remove all detected AR planes
+            // Hide detected AR planes
             if (planeManager != null)
             {
                 foreach (ARPlane plane in planeManager.trackables)

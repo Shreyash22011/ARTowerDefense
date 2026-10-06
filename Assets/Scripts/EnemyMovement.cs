@@ -35,7 +35,7 @@ public class EnemyMovement : MonoBehaviour
             if (currentWaypoint >= waypoints.Length)
             {
                 BaseHealth baseHealth =
-                    FindFirstObjectByType<BaseHealth>();
+                    FindAnyObjectByType<BaseHealth>();
 
                 if (baseHealth != null)
                 {
