@@ -20,6 +20,11 @@ public class BoardGameManager : MonoBehaviour
     private bool waveInProgress;
     private bool gameEnded;
 
+    [Header("Wave Reward")]
+    [SerializeField] private int coinsPerWave = 50;
+
+    private EconomyManager economyManager;
+
     private void Start()
     {
         waypoints = new Transform[]
@@ -39,6 +44,13 @@ public class BoardGameManager : MonoBehaviour
                     "Check BoardBase waypoint names."
                 );
             }
+        }
+
+        economyManager = FindFirstObjectByType<EconomyManager>();
+
+        if (economyManager == null)
+        {
+            Debug.LogError("EconomyManager not found.");
         }
 
         StartNextWave();
@@ -142,6 +154,15 @@ public class BoardGameManager : MonoBehaviour
         waveInProgress = false;
 
         Debug.Log($"WAVE {currentWave} COMPLETED");
+
+        if (economyManager != null)
+        {
+            economyManager.AddCoins(coinsPerWave);
+
+            Debug.Log(
+                $"Wave {currentWave} reward: +{coinsPerWave} coins"
+            );
+        }
 
         if (currentWave >= totalWaves)
         {

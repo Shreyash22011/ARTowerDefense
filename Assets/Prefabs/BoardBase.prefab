@@ -241,7 +241,7 @@ Transform:
   m_GameObject: {fileID: 4744327680674457286}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0.99159575, z: 0.12937531, w: 0}
-  m_LocalPosition: {x: -0.00000018934475, y: 0.519, z: 0.24}
+  m_LocalPosition: {x: -0.00000018934475, y: 0.535, z: -0.07}
   m_LocalScale: {x: 2.4378, y: 0.43900728, z: 1.6739}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -465,7 +465,7 @@ Transform:
   m_GameObject: {fileID: 6055268425308377535}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.267, y: 7.61, z: -0.277}
+  m_LocalPosition: {x: 0.267, y: 7.61, z: -0.396}
   m_LocalScale: {x: 0.15739715, y: 14.649968, z: 0.20200998}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -912,10 +912,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoardGameManager
   enemyPrefab: {fileID: 7418567117728451404, guid: 4a0bd8328e2ef1b42ab21aab997ecfc7, type: 3}
-  totalWaves: 2
-  enemiesPerWave: 3
-  spawnInterval: 1
+  totalWaves: 5
+  enemiesPerWave: 2
+  spawnInterval: 2
   timeBetweenWaves: 3
+  coinsPerWave: 50
 --- !u!114 &7112621951528052717
 MonoBehaviour:
   m_ObjectHideFlags: 0
