@@ -12,7 +12,7 @@ public class ARGameBoardPlacement : MonoBehaviour
     private ARRaycastManager raycastManager;
     private ARPlaneManager planeManager;
 
-    private static List<ARRaycastHit> hits = new List<ARRaycastHit>();
+    private static readonly List<ARRaycastHit> hits = new List<ARRaycastHit>();
 
     private void Awake()
     {
@@ -22,17 +22,39 @@ public class ARGameBoardPlacement : MonoBehaviour
 
     private void Update()
     {
-        if (Touchscreen.current == null)
+        Vector2 screenPosition;
+
+        // --------------------------------------------------
+        // Android: Touch input
+        // --------------------------------------------------
+        if (Touchscreen.current != null &&
+            Touchscreen.current.primaryTouch.press.wasPressedThisFrame)
+        {
+            screenPosition =
+                Touchscreen.current.primaryTouch.position.ReadValue();
+        }
+
+        // --------------------------------------------------
+        // Laptop / Unity Editor: Mouse input
+        // --------------------------------------------------
+        else if (Mouse.current != null &&
+                 Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            screenPosition =
+                Mouse.current.position.ReadValue();
+        }
+
+        // No valid input this frame
+        else
+        {
             return;
+        }
 
-        if (!Touchscreen.current.primaryTouch.press.wasPressedThisFrame)
-            return;
-
-        Vector2 touchPosition =
-            Touchscreen.current.primaryTouch.position.ReadValue();
-
+        // --------------------------------------------------
+        // AR Raycast
+        // --------------------------------------------------
         if (raycastManager.Raycast(
-            touchPosition,
+            screenPosition,
             hits,
             TrackableType.PlaneWithinPolygon))
         {
@@ -56,7 +78,7 @@ public class ARGameBoardPlacement : MonoBehaviour
                 planeManager.enabled = false;
             }
 
-            // Stop further placement
+            // Prevent placing another board
             enabled = false;
         }
     }

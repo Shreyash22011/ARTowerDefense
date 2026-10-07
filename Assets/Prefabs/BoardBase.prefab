@@ -563,6 +563,7 @@ GameObject:
   - component: {fileID: 8896221020608486626}
   - component: {fileID: 122137910619921830}
   - component: {fileID: 7112621951528052717}
+  - component: {fileID: 3279343132131289213}
   m_Layer: 6
   m_Name: BoardBase
   m_TagString: GameBoard
@@ -700,6 +701,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaseHealth
   maxHealth: 100
   healthBarMaterial: {fileID: 2100000, guid: f4b2ef228ca2b77468a5200fc30637da, type: 2}
+--- !u!114 &3279343132131289213
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7752542364864762514}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dbe4d5b556fbf234cbaaaee420159c61, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BoardBuildManager
+  buildPoints: []
 --- !u!1 &8256545658343698283
 GameObject:
   m_ObjectHideFlags: 0

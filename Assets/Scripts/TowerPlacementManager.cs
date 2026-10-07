@@ -85,18 +85,41 @@ public class TowerPlacementManager : MonoBehaviour
         if (mainCamera == null)
             return;
 
-        // No touchscreen available.
-        if (Touchscreen.current == null)
+        Vector2 screenPosition;
+
+        // =====================================================
+        // Android: Touch input
+        // =====================================================
+
+        if (Touchscreen.current != null &&
+            Touchscreen.current.primaryTouch.press.wasPressedThisFrame)
+        {
+            screenPosition =
+                Touchscreen.current.primaryTouch.position.ReadValue();
+        }
+
+        // =====================================================
+        // Laptop / Unity Editor: Mouse input
+        // =====================================================
+
+        else if (Mouse.current != null &&
+                 Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            screenPosition =
+                Mouse.current.position.ReadValue();
+        }
+
+        // No valid input this frame.
+        else
+        {
             return;
+        }
 
-        // Only react to a NEW touch.
-        if (!Touchscreen.current.primaryTouch.press.wasPressedThisFrame)
-            return;
+        // =====================================================
+        // Ray from camera through the screen position
+        // =====================================================
 
-        Vector2 touchPosition =
-            Touchscreen.current.primaryTouch.position.ReadValue();
-
-        Ray ray = mainCamera.ScreenPointToRay(touchPosition);
+        Ray ray = mainCamera.ScreenPointToRay(screenPosition);
 
         // -----------------------------------------------------
         // 1. Raycast against the board.
@@ -113,14 +136,14 @@ public class TowerPlacementManager : MonoBehaviour
         }
 
         // -----------------------------------------------------
-        // 2. Make sure the player actually tapped the board.
+        // 2. Make sure the player actually tapped/clicked board.
         // -----------------------------------------------------
 
         if (!IsGameBoardHit(hit))
         {
             Debug.Log(
                 "[TowerPlacementManager] Placement rejected: " +
-                "tap was not on the GameBoard."
+                "tap/click was not on the GameBoard."
             );
 
             return;
@@ -203,15 +226,10 @@ public class TowerPlacementManager : MonoBehaviour
         // -----------------------------------------------------
         // 8. Clear tower selection.
         // -----------------------------------------------------
-        //
-        // Important:
-        // This happens ONLY after successful placement.
-        // Invalid taps keep the current tower selected.
-        // -----------------------------------------------------
 
         selectedTowerPrefab = null;
     }
-
+    
     // =========================================================
     // BOARD VALIDATION
     // =========================================================
