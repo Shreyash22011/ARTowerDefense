@@ -22,16 +22,20 @@ public class TowerPlacementManager : MonoBehaviour
 
     private Camera mainCamera;
 
+    [SerializeField] private EconomyManager economyManager;
+
     private void Start()
     {
         mainCamera = Camera.main;
 
         if (mainCamera == null)
-        {
-            Debug.LogError(
-                "[TowerPlacementManager] Main Camera not found."
-            );
-        }
+            Debug.LogError("Main Camera not found.");
+
+        if (economyManager == null)
+            economyManager = FindFirstObjectByType<EconomyManager>();
+
+        if (economyManager == null)
+            Debug.LogError("EconomyManager not found.");
     }
 
     // =========================================================
@@ -190,6 +194,22 @@ public class TowerPlacementManager : MonoBehaviour
         // 5. Instantiate tower at the BuildPoint.
         // -----------------------------------------------------
 
+        if (!economyManager.CanAfford(selectedTowerCost))
+        {
+            Debug.Log(
+                $"Not enough coins. Required: {selectedTowerCost}, " +
+                $"Available: {economyManager.CurrentCoins}"
+            );
+
+            return;
+        }
+
+        if (!economyManager.SpendCoins(selectedTowerCost))
+        {
+            Debug.LogError("Failed to spend coins. Tower placement cancelled.");
+            return;
+        }
+
         GameObject tower = Instantiate(
             selectedTowerPrefab,
             buildPoint.transform.position,
@@ -229,7 +249,7 @@ public class TowerPlacementManager : MonoBehaviour
 
         selectedTowerPrefab = null;
     }
-    
+
     // =========================================================
     // BOARD VALIDATION
     // =========================================================
