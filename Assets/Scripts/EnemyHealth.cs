@@ -7,6 +7,8 @@ public class EnemyHealth : MonoBehaviour
 
     private static readonly bool RuntimeDebug = true;
 
+    private BoardGameManager waveManager;
+
     public int MaxHealth => maxHealth;
     public int CurrentHealth => currentHealth;
 
@@ -33,6 +35,16 @@ public class EnemyHealth : MonoBehaviour
 
     private void Die()
     {
+        Debug.Log($"{gameObject.name} died.");
+
+        if (waveManager != null)
+            waveManager.EnemyFinished();
+
         Destroy(gameObject);
+    }
+
+    public void SetWaveManager(BoardGameManager manager)
+    {
+        waveManager = manager;
     }
 }

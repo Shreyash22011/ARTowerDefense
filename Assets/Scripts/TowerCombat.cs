@@ -15,6 +15,8 @@ public class TowerCombat : MonoBehaviour
     private float nextAttackTime;
     private float nextTargetScanTime;
 
+    private BoardGameManager gameManager;
+
     public enum TowerType
     {
         Archer,
@@ -30,6 +32,7 @@ public class TowerCombat : MonoBehaviour
 
     private void Awake()
     {
+        gameManager = FindFirstObjectByType<BoardGameManager>();
         attackRange = Mathf.Max(0f, attackRange);
         attackDamage = Mathf.Max(0, attackDamage);
         attackCooldown = Mathf.Max(0.01f, attackCooldown);
@@ -38,6 +41,10 @@ public class TowerCombat : MonoBehaviour
 
     private void Update()
     {
+
+        if (gameManager != null && gameManager.IsGameEnded())
+            return;
+
         // -------------------------------------------------
         // 1. Make sure the current target is still usable.
         // -------------------------------------------------

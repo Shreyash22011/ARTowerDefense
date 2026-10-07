@@ -8,9 +8,13 @@ public class BaseHealth : MonoBehaviour
     private int currentHealth;
     private Transform healthBar;
 
+    private BoardGameManager gameManager;
+
     private void Start()
     {
         currentHealth = maxHealth;
+
+        gameManager = FindFirstObjectByType<BoardGameManager>();
 
         CreateHealthBar();
         UpdateHealthBar();
@@ -71,5 +75,13 @@ public class BaseHealth : MonoBehaviour
             0.08f,
             0.08f
         );
+    }
+
+    private void Die()
+    {
+        Debug.Log("GAME OVER");
+
+        if (gameManager != null)
+            gameManager.LoseGame();
     }
 }
