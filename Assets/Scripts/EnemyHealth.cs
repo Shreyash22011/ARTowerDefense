@@ -5,7 +5,6 @@ public class EnemyHealth : MonoBehaviour
     [SerializeField] private int maxHealth = 100;
     [SerializeField] private int currentHealth;
 
-    // TEMPORARY PHASE 1B RUNTIME DEBUG: remove after diagnosis.
     private static readonly bool RuntimeDebug = true;
 
     public int MaxHealth => maxHealth;

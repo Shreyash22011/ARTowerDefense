@@ -130,3 +130,7 @@ MonoBehaviour:
   attackRange: 1.5
   attackDamage: 25
   attackCooldown: 1
+  targetScanInterval: 0.15
+  towerType: 0
+  slowMultiplier: 0
+  slowDuration: 0

@@ -8,6 +8,9 @@ public class EnemyMovement : MonoBehaviour
 
     private int currentWaypoint = 0;
 
+    private float speedMultiplier = 1f;
+    private float slowEndTime;
+
     private void Update()
     {
         if (waypoints == null || waypoints.Length == 0)
@@ -15,10 +18,21 @@ public class EnemyMovement : MonoBehaviour
 
         Transform target = waypoints[currentWaypoint];
 
+        float currentSpeed = speed;
+
+        if (Time.time < slowEndTime)
+        {
+            currentSpeed *= speedMultiplier;
+        }
+        else
+        {
+            speedMultiplier = 1f;
+        }
+
         transform.position = Vector3.MoveTowards(
             transform.position,
             target.position,
-            speed * Time.deltaTime
+            currentSpeed * Time.deltaTime
         );
 
         Vector3 direction = target.position - transform.position;
@@ -45,5 +59,14 @@ public class EnemyMovement : MonoBehaviour
                 Destroy(gameObject);
             }
         }
+    }
+
+    public void ApplySlow(float multiplier, float duration)
+    {
+        multiplier = Mathf.Clamp(multiplier, 0.1f, 1f);
+
+        speedMultiplier = Mathf.Min(speedMultiplier, multiplier);
+
+        slowEndTime = Mathf.Max(slowEndTime, Time.time + duration);
     }
 }

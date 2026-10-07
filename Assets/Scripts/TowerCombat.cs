@@ -2,80 +2,120 @@ using UnityEngine;
 
 public class TowerCombat : MonoBehaviour
 {
+    [Header("Combat")]
     [SerializeField] private float attackRange = 1.5f;
     [SerializeField] private int attackDamage = 25;
     [SerializeField] private float attackCooldown = 1f;
 
-    private EnemyHealth currentTarget;
-    private float nextAttackTime;
-    private float nextDebugScanTime;
+    [Header("Targeting")]
+    [SerializeField] private float targetScanInterval = 0.15f;
 
-    // TEMPORARY PHASE 1B RUNTIME DEBUG: remove after diagnosis.
-    private static readonly bool RuntimeDebug = true;
+    private EnemyHealth currentTarget;
+
+    private float nextAttackTime;
+    private float nextTargetScanTime;
+
+    public enum TowerType
+    {
+        Archer,
+        Cannon,
+        Ice
+    }
+
+    [SerializeField] private TowerType towerType;
+
+    [Header("Ice Effect")]
+    [SerializeField] private float slowMultiplier = 0.5f;
+    [SerializeField] private float slowDuration = 2f;
 
     private void Awake()
     {
         attackRange = Mathf.Max(0f, attackRange);
         attackDamage = Mathf.Max(0, attackDamage);
         attackCooldown = Mathf.Max(0.01f, attackCooldown);
-
-        if (RuntimeDebug)
-        {
-            Debug.Log($"[TowerCombat DEBUG] Archer initialized at {transform.position}. " +
-                      $"Range={attackRange}, Damage={attackDamage}, Cooldown={attackCooldown}, " +
-                      $"WorldScale={transform.lossyScale}", this);
-        }
+        targetScanInterval = Mathf.Max(0.05f, targetScanInterval);
     }
 
     private void Update()
     {
-        if (RuntimeDebug && Time.time >= nextDebugScanTime)
-        {
-            nextDebugScanTime = Time.time + 1f;
-            Debug.Log($"[TowerCombat DEBUG] Archer scan at {transform.position}. " +
-                      $"ActiveTarget={(currentTarget == null ? "none" : currentTarget.name)}", this);
-        }
+        // -------------------------------------------------
+        // 1. Make sure the current target is still usable.
+        // -------------------------------------------------
 
         if (!IsTargetValid(currentTarget))
         {
-            if (RuntimeDebug && currentTarget != null)
-                Debug.Log($"[TowerCombat DEBUG] Target lost/destroyed: {currentTarget.name}", this);
+            currentTarget = null;
+        }
+
+        // -------------------------------------------------
+        // 2. Periodically search for a target.
+        // -------------------------------------------------
+
+        if (currentTarget == null && Time.time >= nextTargetScanTime)
+        {
+            nextTargetScanTime = Time.time + targetScanInterval;
 
             currentTarget = FindTarget();
         }
 
-        if (currentTarget == null || Time.time < nextAttackTime)
+        // -------------------------------------------------
+        // 3. No target -> nothing to attack.
+        // -------------------------------------------------
+
+        if (currentTarget == null)
             return;
 
-        if (RuntimeDebug)
-        {
-            float distance = Vector3.Distance(transform.position, currentTarget.transform.position);
-            Debug.Log($"[TowerCombat DEBUG] Attack performed on {currentTarget.name}. " +
-                      $"Distance={distance}, Damage={attackDamage}, " +
-                      $"HealthBefore={currentTarget.CurrentHealth}", this);
-        }
+        // -------------------------------------------------
+        // 4. Respect attack cooldown.
+        // -------------------------------------------------
+
+        if (Time.time < nextAttackTime)
+            return;
+
+        // -------------------------------------------------
+        // 5. Attack.
+        // -------------------------------------------------
 
         currentTarget.TakeDamage(attackDamage);
-        nextAttackTime = Time.time + attackCooldown;
 
-        if (RuntimeDebug && currentTarget != null)
+        if (towerType == TowerType.Ice)
         {
-            Debug.Log($"[TowerCombat DEBUG] Damage dealt to {currentTarget.name}. " +
-                      $"HealthAfter={currentTarget.CurrentHealth}", this);
+            EnemyMovement movement = currentTarget.GetComponent<EnemyMovement>();
+
+            if (movement != null)
+            {
+                movement.ApplySlow(slowMultiplier, slowDuration);
+            }
         }
 
+        nextAttackTime = Time.time + attackCooldown;
+
+        // -------------------------------------------------
+        // 6. Target may have died from this attack.
+        // -------------------------------------------------
+
         if (!IsTargetValid(currentTarget))
+        {
             currentTarget = null;
+        }
+
+        // -------------------------------------------------
+        // 7. Attack sound.
+        // -------------------------------------------------
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayTowerAttack();
+        }
     }
 
     private EnemyHealth FindTarget()
     {
         Collider[] colliders = Physics.OverlapSphere(transform.position, attackRange);
-        EnemyHealth closestTarget = null;
-        float closestDistanceSqr = float.PositiveInfinity;
 
-        if (RuntimeDebug)
-            Debug.Log($"[TowerCombat DEBUG] OverlapSphere detected {colliders.Length} colliders", this);
+        EnemyHealth closestTarget = null;
+
+        float closestDistanceSqr = float.PositiveInfinity;
 
         foreach (Collider candidateCollider in colliders)
         {
@@ -84,13 +124,6 @@ public class TowerCombat : MonoBehaviour
 
             EnemyHealth candidate = candidateCollider.GetComponentInParent<EnemyHealth>();
 
-            if (RuntimeDebug && candidate != null)
-            {
-                float candidateDistance = Vector3.Distance(transform.position, candidate.transform.position);
-                Debug.Log($"[TowerCombat DEBUG] EnemyHealth candidate={candidate.name}, " +
-                          $"Distance={candidateDistance}, Health={candidate.CurrentHealth}", this);
-            }
-
             if (!IsTargetValid(candidate))
                 continue;
 
@@ -98,32 +131,31 @@ public class TowerCombat : MonoBehaviour
 
             if (distanceSqr < closestDistanceSqr)
             {
-                closestTarget = candidate;
                 closestDistanceSqr = distanceSqr;
+                closestTarget = candidate;
             }
         }
-
-        if (RuntimeDebug && closestTarget != null)
-            Debug.Log($"[TowerCombat DEBUG] Target acquired: {closestTarget.name}", this);
 
         return closestTarget;
     }
 
-    private void OnDrawGizmosSelected()
-    {
-        if (!RuntimeDebug)
-            return;
-
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, attackRange);
-    }
-
     private bool IsTargetValid(EnemyHealth target)
     {
-        if (target == null || target.CurrentHealth <= 0)
+        if (target == null)
+            return false;
+
+        if (target.CurrentHealth <= 0)
             return false;
 
         float rangeSqr = attackRange * attackRange;
-        return (target.transform.position - transform.position).sqrMagnitude <= rangeSqr;
+
+        float distanceSqr = (target.transform.position - transform.position).sqrMagnitude;
+
+        return distanceSqr <= rangeSqr;
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.DrawWireSphere(transform.position, attackRange);
     }
 }
