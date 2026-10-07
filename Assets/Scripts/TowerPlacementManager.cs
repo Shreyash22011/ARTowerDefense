@@ -1,8 +1,5 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.XR.ARFoundation;
-using UnityEngine.XR.ARSubsystems;
-using System.Collections.Generic;
 
 public class TowerPlacementManager : MonoBehaviour
 {
@@ -17,7 +14,8 @@ public class TowerPlacementManager : MonoBehaviour
     [SerializeField] private int iceCost = 200;
 
     [Header("Placement")]
-    [SerializeField] private float towerHeight = 0.1f;
+    [Tooltip("Maximum horizontal distance from the player's tap to a BuildPoint.")]
+    [SerializeField] private float placementSnapDistance = 0.04f;
 
     private GameObject selectedTowerPrefab;
     private int selectedTowerCost;
@@ -27,7 +25,18 @@ public class TowerPlacementManager : MonoBehaviour
     private void Start()
     {
         mainCamera = Camera.main;
+
+        if (mainCamera == null)
+        {
+            Debug.LogError(
+                "[TowerPlacementManager] Main Camera not found."
+            );
+        }
     }
+
+    // =========================================================
+    // TOWER SELECTION
+    // =========================================================
 
     public void SelectArcher()
     {
@@ -62,14 +71,25 @@ public class TowerPlacementManager : MonoBehaviour
             AudioManager.Instance.PlayButtonClick();
     }
 
+    // =========================================================
+    // TOWER PLACEMENT
+    // =========================================================
+
     private void Update()
     {
+        // No tower selected.
         if (selectedTowerPrefab == null)
             return;
 
+        // No camera available.
+        if (mainCamera == null)
+            return;
+
+        // No touchscreen available.
         if (Touchscreen.current == null)
             return;
 
+        // Only react to a NEW touch.
         if (!Touchscreen.current.primaryTouch.press.wasPressedThisFrame)
             return;
 
@@ -78,30 +98,216 @@ public class TowerPlacementManager : MonoBehaviour
 
         Ray ray = mainCamera.ScreenPointToRay(touchPosition);
 
-        if (Physics.Raycast(ray, out RaycastHit hit))
+        // -----------------------------------------------------
+        // 1. Raycast against the board.
+        // -----------------------------------------------------
+
+        if (!Physics.Raycast(ray, out RaycastHit hit))
         {
-            if (hit.collider.CompareTag("GameBoard") ||
-                hit.collider.transform.root.CompareTag("GameBoard"))
-            {
-                Vector3 position = hit.point;
+            Debug.Log(
+                "[TowerPlacementManager] Placement rejected: " +
+                "raycast did not hit anything."
+            );
 
-                position.y += towerHeight;
-
-                GameObject tower = Instantiate(
-                    selectedTowerPrefab,
-                    position,
-                    Quaternion.identity
-                );
-
-                Debug.Log("Tower placed: " + selectedTowerPrefab.name);
-
-                if (AudioManager.Instance != null)
-                    AudioManager.Instance.PlayTowerPlace();
-
-                selectedTowerPrefab = null;
-            }
+            return;
         }
+
+        // -----------------------------------------------------
+        // 2. Make sure the player actually tapped the board.
+        // -----------------------------------------------------
+
+        if (!IsGameBoardHit(hit))
+        {
+            Debug.Log(
+                "[TowerPlacementManager] Placement rejected: " +
+                "tap was not on the GameBoard."
+            );
+
+            return;
+        }
+
+        // -----------------------------------------------------
+        // 3. Find the build manager belonging to this board.
+        // -----------------------------------------------------
+
+        BoardBuildManager boardBuildManager =
+            hit.collider.GetComponentInParent<BoardBuildManager>();
+
+        if (boardBuildManager == null)
+        {
+            Debug.LogError(
+                "[TowerPlacementManager] Placement failed: " +
+                "BoardBuildManager was not found on the board."
+            );
+
+            return;
+        }
+
+        // -----------------------------------------------------
+        // 4. Find the nearest available legal BuildPoint.
+        // -----------------------------------------------------
+
+        TowerBuildPoint buildPoint =
+            FindNearestAvailableBuildPoint(
+                hit.point,
+                boardBuildManager
+            );
+
+        if (buildPoint == null)
+        {
+            Debug.Log(
+                "[TowerPlacementManager] Placement rejected: " +
+                "no available BuildPoint is close enough to the tap."
+            );
+
+            return;
+        }
+
+        // -----------------------------------------------------
+        // 5. Instantiate tower at the BuildPoint.
+        // -----------------------------------------------------
+
+        GameObject tower = Instantiate(
+            selectedTowerPrefab,
+            buildPoint.transform.position,
+            buildPoint.transform.rotation
+        );
+
+        if (tower == null)
+        {
+            Debug.LogError(
+                "[TowerPlacementManager] Tower instantiation failed."
+            );
+
+            return;
+        }
+
+        // -----------------------------------------------------
+        // 6. Mark the BuildPoint as occupied.
+        // -----------------------------------------------------
+
+        buildPoint.SetOccupied(true);
+
+        Debug.Log(
+            $"[TowerPlacementManager] Tower placed successfully: " +
+            $"{selectedTowerPrefab.name} at {buildPoint.name}"
+        );
+
+        // -----------------------------------------------------
+        // 7. Play placement audio.
+        // -----------------------------------------------------
+
+        if (AudioManager.Instance != null)
+            AudioManager.Instance.PlayTowerPlace();
+
+        // -----------------------------------------------------
+        // 8. Clear tower selection.
+        // -----------------------------------------------------
+        //
+        // Important:
+        // This happens ONLY after successful placement.
+        // Invalid taps keep the current tower selected.
+        // -----------------------------------------------------
+
+        selectedTowerPrefab = null;
     }
+
+    // =========================================================
+    // BOARD VALIDATION
+    // =========================================================
+
+    private bool IsGameBoardHit(RaycastHit hit)
+    {
+        if (hit.collider == null)
+            return false;
+
+        // Direct GameBoard tag.
+        if (hit.collider.CompareTag("GameBoard"))
+            return true;
+
+        // GameBoard tag on the root object.
+        if (hit.collider.transform.root.CompareTag("GameBoard"))
+            return true;
+
+        return false;
+    }
+
+    // =========================================================
+    // BUILD POINT SEARCH
+    // =========================================================
+
+    private TowerBuildPoint FindNearestAvailableBuildPoint(
+        Vector3 hitPosition,
+        BoardBuildManager boardBuildManager)
+    {
+        TowerBuildPoint nearestPoint = null;
+
+        float closestDistanceSqr =
+            placementSnapDistance * placementSnapDistance;
+
+        if (boardBuildManager.BuildPoints == null ||
+            boardBuildManager.BuildPoints.Length == 0)
+        {
+            Debug.LogWarning(
+                "[TowerPlacementManager] Board has no BuildPoints."
+            );
+
+            return null;
+        }
+
+        foreach (TowerBuildPoint point in boardBuildManager.BuildPoints)
+        {
+            if (point == null)
+                continue;
+
+            // -------------------------------------------------
+            // Already occupied.
+            // -------------------------------------------------
+
+            if (point.IsOccupied)
+                continue;
+
+            // -------------------------------------------------
+            // Compare horizontal distance only.
+            //
+            // Y differences should not affect whether the
+            // player's tap is close enough to a build point.
+            // -------------------------------------------------
+
+            Vector2 hitXZ = new Vector2(
+                hitPosition.x,
+                hitPosition.z
+            );
+
+            Vector2 pointXZ = new Vector2(
+                point.transform.position.x,
+                point.transform.position.z
+            );
+
+            float distanceSqr =
+                (hitXZ - pointXZ).sqrMagnitude;
+
+            // -------------------------------------------------
+            // Point is outside the allowed snap radius.
+            // -------------------------------------------------
+
+            if (distanceSqr > closestDistanceSqr)
+                continue;
+
+            // -------------------------------------------------
+            // This is the closest valid point so far.
+            // -------------------------------------------------
+
+            closestDistanceSqr = distanceSqr;
+            nearestPoint = point;
+        }
+
+        return nearestPoint;
+    }
+
+    // =========================================================
+    // PUBLIC ACCESSORS
+    // =========================================================
 
     public bool HasSelectedTower()
     {
