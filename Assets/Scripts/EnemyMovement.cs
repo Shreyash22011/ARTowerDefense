@@ -52,16 +52,12 @@ public class EnemyMovement : MonoBehaviour
                     FindAnyObjectByType<BaseHealth>();
 
                 if (baseHealth != null)
-                {
                     baseHealth.TakeDamage(damageToBase);
 
-                    BoardGameManager waveManager = FindFirstObjectByType<BoardGameManager>();
+                BoardGameManager waveManager = FindFirstObjectByType<BoardGameManager>();
 
-                    if (waveManager != null)
-                        waveManager.EnemyFinished();
-
-                    Destroy(gameObject);
-                }
+                if (waveManager != null)
+                    waveManager.EnemyFinished();
 
                 Destroy(gameObject);
             }

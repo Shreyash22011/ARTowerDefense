@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 public class TowerPlacementManager : MonoBehaviour
@@ -14,7 +15,7 @@ public class TowerPlacementManager : MonoBehaviour
     [SerializeField] private int iceCost = 200;
 
     [Header("Placement")]
-    [Tooltip("Maximum horizontal distance from the player's tap to a BuildPoint.")]
+    [Tooltip("Retained for serialized scene compatibility. Valid board taps snap to the nearest available BuildPoint.")]
     [SerializeField] private float placementSnapDistance = 0.04f;
 
     private GameObject selectedTowerPrefab;
@@ -23,6 +24,8 @@ public class TowerPlacementManager : MonoBehaviour
     private Camera mainCamera;
 
     [SerializeField] private EconomyManager economyManager;
+
+    private BoardGameManager gameManager;
 
     private void Start()
     {
@@ -36,6 +39,8 @@ public class TowerPlacementManager : MonoBehaviour
 
         if (economyManager == null)
             Debug.LogError("EconomyManager not found.");
+
+        gameManager = FindFirstObjectByType<BoardGameManager>();
     }
 
     // =========================================================
@@ -44,6 +49,9 @@ public class TowerPlacementManager : MonoBehaviour
 
     public void SelectArcher()
     {
+        if (IsGameEnded())
+            return;
+
         selectedTowerPrefab = archerPrefab;
         selectedTowerCost = archerCost;
 
@@ -55,6 +63,9 @@ public class TowerPlacementManager : MonoBehaviour
 
     public void SelectCannon()
     {
+        if (IsGameEnded())
+            return;
+
         selectedTowerPrefab = cannonPrefab;
         selectedTowerCost = cannonCost;
 
@@ -66,6 +77,9 @@ public class TowerPlacementManager : MonoBehaviour
 
     public void SelectIce()
     {
+        if (IsGameEnded())
+            return;
+
         selectedTowerPrefab = icePrefab;
         selectedTowerCost = iceCost;
 
@@ -81,6 +95,9 @@ public class TowerPlacementManager : MonoBehaviour
 
     private void Update()
     {
+        if (IsGameEnded())
+            return;
+
         // No tower selected.
         if (selectedTowerPrefab == null)
             return;
@@ -98,6 +115,15 @@ public class TowerPlacementManager : MonoBehaviour
         if (Touchscreen.current != null &&
             Touchscreen.current.primaryTouch.press.wasPressedThisFrame)
         {
+            int touchId =
+                Touchscreen.current.primaryTouch.touchId.ReadValue();
+
+            if (EventSystem.current != null &&
+                EventSystem.current.IsPointerOverGameObject(touchId))
+            {
+                return;
+            }
+
             screenPosition =
                 Touchscreen.current.primaryTouch.position.ReadValue();
         }
@@ -109,6 +135,12 @@ public class TowerPlacementManager : MonoBehaviour
         else if (Mouse.current != null &&
                  Mouse.current.leftButton.wasPressedThisFrame)
         {
+            if (EventSystem.current != null &&
+                EventSystem.current.IsPointerOverGameObject())
+            {
+                return;
+            }
+
             screenPosition =
                 Mouse.current.position.ReadValue();
         }
@@ -184,7 +216,7 @@ public class TowerPlacementManager : MonoBehaviour
         {
             Debug.Log(
                 "[TowerPlacementManager] Placement rejected: " +
-                "no available BuildPoint is close enough to the tap."
+                "no available BuildPoint was found on the board."
             );
 
             return;
@@ -280,8 +312,7 @@ public class TowerPlacementManager : MonoBehaviour
     {
         TowerBuildPoint nearestPoint = null;
 
-        float closestDistanceSqr =
-            placementSnapDistance * placementSnapDistance;
+        float closestDistanceSqr = float.PositiveInfinity;
 
         if (boardBuildManager.BuildPoints == null ||
             boardBuildManager.BuildPoints.Length == 0)
@@ -308,8 +339,8 @@ public class TowerPlacementManager : MonoBehaviour
             // -------------------------------------------------
             // Compare horizontal distance only.
             //
-            // Y differences should not affect whether the
-            // player's tap is close enough to a build point.
+            // Y differences should not affect which build point
+            // is nearest to the player's board tap.
             // -------------------------------------------------
 
             Vector2 hitXZ = new Vector2(
@@ -325,11 +356,9 @@ public class TowerPlacementManager : MonoBehaviour
             float distanceSqr =
                 (hitXZ - pointXZ).sqrMagnitude;
 
-            // -------------------------------------------------
-            // Point is outside the allowed snap radius.
-            // -------------------------------------------------
-
-            if (distanceSqr > closestDistanceSqr)
+            // Keep the nearest available point. Equal distances
+            // retain the earlier serialized point deterministically.
+            if (distanceSqr >= closestDistanceSqr)
                 continue;
 
             // -------------------------------------------------
@@ -341,6 +370,14 @@ public class TowerPlacementManager : MonoBehaviour
         }
 
         return nearestPoint;
+    }
+
+    private bool IsGameEnded()
+    {
+        if (gameManager == null)
+            gameManager = FindFirstObjectByType<BoardGameManager>();
+
+        return gameManager != null && gameManager.IsGameEnded();
     }
 
     // =========================================================

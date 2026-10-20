@@ -10,6 +10,8 @@ public class BaseHealth : MonoBehaviour
 
     private BoardGameManager gameManager;
 
+    public int CurrentHealth => currentHealth;
+
     private void Start()
     {
         currentHealth = maxHealth;
@@ -50,6 +52,9 @@ public class BaseHealth : MonoBehaviour
 
     public void TakeDamage(int damage)
     {
+        if (currentHealth <= 0)
+            return;
+
         currentHealth -= damage;
         currentHealth = Mathf.Max(currentHealth, 0);
 
@@ -59,7 +64,7 @@ public class BaseHealth : MonoBehaviour
 
         if (currentHealth <= 0)
         {
-            Debug.Log("GAME OVER!");
+            Die();
         }
     }
 
